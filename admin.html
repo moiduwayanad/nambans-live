@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nambans Live - Admin Control</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-4 md:p-8">
+
+  <!-- HEADER -->
+  <header class="max-w-4xl mx-auto flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-full overflow-hidden border-2 border-green-500 bg-white p-0.5 shadow-lg">
+        <img src="/logo.png" alt="Logo" class="w-full h-full object-cover rounded-full">
+      </div>
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-wide">NAMBANS <span class="text-orange-500">LIVE</span></h1>
+        <p class="text-xs text-green-400 font-bold uppercase">Moidu Namban Initiative</p>
+      </div>
+    </div>
+    <div class="bg-slate-900 border border-slate-700 px-4 py-2 rounded-full text-sm font-mono flex items-center gap-2">
+      <span>Players:</span>
+      <span id="playerCounter" class="text-green-400 font-black text-base">0</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto">
+    <!-- BUILDER SECTION -->
+    <section id="builderSection" class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 id="formTitle" class="text-lg font-bold text-white">പുതിയ ചോദ്യം ചേർക്കുക</h2>
+          <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-red-400 hover:underline">Cancel Edit</button>
+        </div>
+        
+        <input type="text" id="qInput" placeholder="ചോദ്യം ഇവിടെ നൽകുക" 
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500" />
+
+        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 space-y-2">
+          <label class="block text-xs font-bold text-slate-400 uppercase">ചോദ്യത്തിന് ഫോട്ടോ ചേർക്കുക (Optional):</label>
+          <input type="file" id="photoInput" accept="image/*" onchange="previewImage(event)" class="text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-green-600 file:text-white hover:file:bg-green-500 cursor-pointer" />
+          <div id="imagePreviewContainer" class="hidden mt-2 relative w-32 h-24 rounded-lg overflow-hidden border border-slate-600">
+            <img id="imgPreview" src="" class="w-full h-full object-cover">
+            <button onclick="removeImage()" class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold cursor-pointer">✕</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="text-xs font-bold text-slate-400 uppercase">സമയം (സെക്കൻഡ്):</label>
+          <select id="timeSelect" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white">
+            <option value="10">10 Seconds</option>
+            <option value="15" selected>15 Seconds</option>
+            <option value="20">20 Seconds</option>
+            <option value="30">30 Seconds</option>
+          </select>
+        </div>
+
+        <p class="text-xs font-bold text-slate-400 uppercase mt-4">ഓപ്ഷനുകൾ (ശരിയുത്തരം ടിക്ക് ചെയ്യുക):</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="0" checked class="w-5 h-5 accent-green-500 cursor-pointer">
+            <input type="text" id="opt0" placeholder="Option 1" class="w-full bg-transparent focus:outline-none text-white">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="1" class="w-5 h-5 accent-green-500 cursor-pointer">
+            <input type="text" id="opt1" placeholder="Option 2" class="w-full bg-transparent focus:outline-none text-white">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="2" class="w-5 h-5 accent-green-500 cursor-pointer">
+            <input type="text" id="opt2" placeholder="Option 3" class="w-full bg-transparent focus:outline-none text-white">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="3" class="w-5 h-5 accent-green-500 cursor-pointer">
+            <input type="text" id="opt3" placeholder="Option 4" class="w-full bg-transparent focus:outline-none text-white">
+          </div>
+        </div>
+
+        <button id="saveBtn" onclick="saveQuestion()" class="w-full bg-slate-800 hover:bg-slate-700 font-bold py-3.5 rounded-xl transition border border-slate-700 cursor-pointer">
+          + Save Question
+        </button>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+          <h3 class="text-base font-bold text-white">സേവ് ചെയ്ത ചോദ്യങ്ങൾ (<span id="savedCount">0</span>)</h3>
+          <button onclick="clearAllQuestions()" class="text-xs text-red-400 hover:underline">Clear All</button>
+        </div>
+        <div id="questionsList" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+      </div>
+
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+        <span id="deckSummary" class="text-sm font-semibold text-slate-400">0 ചോദ്യങ്ങൾ തയ്യാറാണ്</span>
+        <button id="startHostBtn" onclick="launchLiveHosting()" disabled 
+          class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-green-600 to-green-500 disabled:opacity-30 font-black text-white hover:from-green-500 transition shadow-lg shadow-green-950 cursor-pointer">
+          GENERATE PIN & HOST LIVE
+        </button>
+      </div>
+    </section>
+
+    <!-- LIVE ARENA -->
+    <section id="arenaSection" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-orange-600 via-amber-600 to-green-600 p-1 rounded-3xl shadow-2xl">
+        <div class="bg-slate-950 px-6 py-4 rounded-[22px] flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Join with Game PIN:</p>
+            <p id="displayPin" class="text-4xl md:text-5xl font-black text-white tracking-widest font-mono">------</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs font-bold text-slate-400 uppercase">Status:</p>
+            <p class="text-base font-bold text-green-400">HOSTING LIVE</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+        <span id="qTracker" class="text-base font-bold text-slate-300">Question 1/1</span>
+        <div class="flex gap-3">
+          <button onclick="revealNow()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700">
+            Reveal Answer
+          </button>
+          <button onclick="advanceQuestion()" class="px-5 py-2.5 bg-green-600 hover:bg-green-500 text-xs font-black rounded-xl">
+            Next Question ➔
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col items-center">
+        <!-- സർക്കുലർ ടൈമർ സെക്ഷൻ (Round Progress with Center Digit) -->
+        <div class="relative w-28 h-28 flex items-center justify-center mb-6">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-800" fill="transparent" />
+            <circle id="circularTimer" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" 
+              stroke-dasharray="264" stroke-dashoffset="0" stroke-linecap="round" 
+              class="text-green-500 transition-all duration-75" fill="transparent" />
+          </svg>
+          <span id="timerDigit" class="absolute text-3xl font-black text-white font-mono">00</span>
+        </div>
+        
+        <h2 id="liveQText" class="text-2xl md:text-3xl font-black text-center mb-6 w-full"></h2>
+        
+        <div id="liveImgContainer" class="hidden flex justify-center mb-6">
+          <img id="liveImg" src="" class="max-h-64 rounded-2xl border-2 border-slate-700 object-contain shadow-lg">
+        </div>
+
+        <div id="liveOptionsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"></div>
+      </div>
+    </section>
+
+    <!-- PODIUM -->
+    <section id="podiumSection" class="hidden text-center py-10">
+      <h2 class="text-4xl font-black text-white mb-1">🏆 NAMBANS LIVE WINNERS 🏆</h2>
+      <p class="text-green-400 font-bold uppercase mb-12">Congratulations Champions!</p>
+
+      <div class="flex items-end justify-center gap-3 max-w-xl mx-auto h-80">
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-2xl mb-1">🥈</span>
+          <p id="podium2" class="font-bold text-sm truncate max-w-[100px]"></p>
+          <div class="w-full bg-slate-700 h-44 rounded-t-2xl flex items-center justify-center text-4xl font-black text-slate-400">2</div>
+        </div>
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-4xl mb-1">👑</span>
+          <p id="podium1" class="font-bold text-base text-yellow-400 truncate max-w-[120px]"></p>
+          <div class="w-full bg-yellow-500 h-60 rounded-t-2xl flex items-center justify-center text-6xl font-black text-yellow-900">1</div>
+        </div>
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-2xl mb-1">🥉</span>
+          <p id="podium3" class="font-bold text-sm text-orange-400 truncate max-w-[100px]"></p>
+          <div class="w-full bg-amber-800 h-32 rounded-t-2xl flex items-center justify-center text-4xl font-black text-amber-950">3</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const socket = io();
+    let quizDeck = JSON.parse(localStorage.getItem('nambans_quiz_deck') || '[]');
+    let currentIdx = -1;
+    let timerId = null;
+    let editingIndex = -1;
+    let currentBase64Image = null;
+    const circleCircumference = 264; // 2 * PI * 42
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTickSound() {
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } catch(e) {}
+    }
+
+    function playBuzzerSound() {
+      try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch(e) {}
+    }
+
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentBase64Image = e.target.result;
+        document.getElementById('imgPreview').src = currentBase64Image;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage() {
+      currentBase64Image = null;
+      document.getElementById('photoInput').value = '';
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+      document.getElementById('imgPreview').src = '';
+    }
+
+    function renderSavedList() {
+      const list = document.getElementById('questionsList');
+      list.innerHTML = '';
+      document.getElementById('savedCount').textContent = quizDeck.length;
+      document.getElementById('deckSummary').textContent = `${quizDeck.length} ചോദ്യങ്ങൾ തയ്യാറാണ്`;
+      document.getElementById('startHostBtn').disabled = quizDeck.length === 0;
+
+      quizDeck.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700";
+        item.innerHTML = `
+          <div class="flex items-center gap-3 overflow-hidden">
+            <span class="text-xs font-bold text-slate-500">#${idx + 1}</span>
+            ${q.image ? `<img src="${q.image}" class="w-8 h-8 rounded object-cover border border-slate-600">` : ''}
+            <p class="text-sm font-semibold text-white truncate max-w-[240px] md:max-w-md">${q.text}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="editQuestion(${idx})" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-orange-400 font-bold">Edit</button>
+            <button onclick="deleteQuestion(${idx})" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-red-400 font-bold">Delete</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      localStorage.setItem('nambans_quiz_deck', JSON.stringify(quizDeck));
+    }
+
+    function saveQuestion() {
+      const text = document.getElementById('qInput').value.trim();
+      const timeLimit = parseInt(document.getElementById('timeSelect').value, 10);
+      const correctChoice = parseInt(document.querySelector('input[name="correctOpt"]:checked').value, 10);
+      const options = [
+        document.getElementById('opt0').value.trim(),
+        document.getElementById('opt1').value.trim(),
+        document.getElementById('opt2').value.trim(),
+        document.getElementById('opt3').value.trim()
+      ];
+
+      if (!text || options.some(o => !o)) return alert("ചോദ്യവും 4 ഓപ്ഷനുകളും നൽകുക!");
+
+      const qObj = { text, timeLimit, correctChoice, options, image: currentBase64Image };
+
+      if (editingIndex > -1) {
+        quizDeck[editingIndex] = qObj;
+        editingIndex = -1;
+      } else {
+        quizDeck.push(qObj);
+      }
+
+      resetForm();
+      renderSavedList();
+    }
+
+    function editQuestion(idx) {
+      editingIndex = idx;
+      const q = quizDeck[idx];
+      document.getElementById('qInput').value = q.text;
+      document.getElementById('timeSelect').value = q.timeLimit;
+      document.querySelector(`input[name="correctOpt"][value="${q.correctChoice}"]`).checked = true;
+      for (let i = 0; i < 4; i++) document.getElementById(`opt${i}`).value = q.options[i];
+
+      if (q.image) {
+        currentBase64Image = q.image;
+        document.getElementById('imgPreview').src = q.image;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+      } else {
+        removeImage();
+      }
+
+      document.getElementById('formTitle').textContent = `ചോദ്യം #${idx + 1} തിരുത്തുന്നു`;
+      document.getElementById('saveBtn').textContent = "✓ Update Question";
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+    }
+
+    function resetForm() {
+      editingIndex = -1;
+      document.getElementById('qInput').value = '';
+      for (let i = 0; i < 4; i++) document.getElementById(`opt${i}`).value = '';
+      removeImage();
+      document.getElementById('formTitle').textContent = "പുതിയ ചോദ്യം ചേർക്കുക";
+      document.getElementById('saveBtn').textContent = "+ Save Question";
+      document.getElementById('cancelEditBtn').classList.add('hidden');
+    }
+
+    function deleteQuestion(idx) {
+      if (confirm('ഈ ചോദ്യം ഡിലീറ്റ് ചെയ്യണോ?')) {
+        quizDeck.splice(idx, 1);
+        if (editingIndex === idx) resetForm();
+        renderSavedList();
+      }
+    }
+
+    function clearAllQuestions() {
+      if (confirm('എല്ലാ ചോദ്യങ്ങളും പൂർണ്ണമായി നീക്കം ചെയ്യണോ?')) {
+        quizDeck = [];
+        resetForm();
+        renderSavedList();
+      }
+    }
+
+    function launchLiveHosting() {
+      audioCtx.resume();
+      socket.emit('admin_init_deck', { deck: quizDeck });
+      document.getElementById('builderSection').classList.add('hidden');
+      document.getElementById('arenaSection').classList.remove('hidden');
+    }
+
+    function advanceQuestion() {
+      currentIdx++;
+      if (currentIdx >= quizDeck.length) {
+        socket.emit('admin_show_podium');
+        return;
+      }
+      socket.emit('admin_start_question', { questionIdx: currentIdx });
+    }
+
+    function revealNow() {
+      socket.emit('admin_reveal_early');
+    }
+
+    socket.on('player_count_update', count => {
+      document.getElementById('playerCounter').textContent = count;
+    });
+
+    socket.on('game_pin_generated', ({ pin }) => {
+      document.getElementById('displayPin').textContent = pin;
+    });
+
+    socket.on('new_question', (data) => {
+      clearInterval(timerId);
+      document.getElementById('qTracker').textContent = `Question ${data.index + 1}/${data.total}`;
+      document.getElementById('liveQText').textContent = data.text;
+      
+      const imgContainer = document.getElementById('liveImgContainer');
+      if (data.image) {
+        document.getElementById('liveImg').src = data.image;
+        imgContainer.classList.remove('hidden');
+      } else {
+        imgContainer.classList.add('hidden');
+      }
+
+      const grid = document.getElementById('liveOptionsGrid');
+      grid.innerHTML = '';
+      data.options.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        div.id = `optCard-${idx}`;
+        div.className = "p-4 bg-slate-800 rounded-xl border border-slate-700 font-bold text-lg flex justify-between";
+        div.innerHTML = `<span>${opt}</span><span class="hidden checkmark text-green-400">✓</span>`;
+        grid.appendChild(div);
+      });
+
+      const totalMs = data.timeLimit * 1000;
+      let lastSecond = -1;
+      const circleBar = document.getElementById('circularTimer');
+      const digitText = document.getElementById('timerDigit');
+
+      timerId = setInterval(() => {
+        const remaining = data.deadline - Date.now();
+        const currentSec = Math.max(0, Math.ceil(remaining / 1000));
+
+        digitText.textContent = currentSec;
+
+        if (currentSec !== lastSecond && currentSec > 0) {
+          playTickSound();
+          lastSecond = currentSec;
+        }
+
+        const ratio = Math.max(0, remaining / totalMs);
+        circleBar.style.strokeDashoffset = circleCircumference * (1 - ratio);
+
+        // ടൈമർ അവസാനിക്കാറാകുമ്പോൾ നിറം മാറ്റുന്നു
+        if (ratio < 0.25) {
+          circleBar.setAttribute('class', 'text-red-500 transition-all duration-75');
+        } else if (ratio < 0.5) {
+          circleBar.setAttribute('class', 'text-orange-500 transition-all duration-75');
+        } else {
+          circleBar.setAttribute('class', 'text-green-500 transition-all duration-75');
+        }
+
+        if (remaining <= 0) {
+          clearInterval(timerId);
+          circleBar.style.strokeDashoffset = circleCircumference;
+          digitText.textContent = '0';
+          playBuzzerSound();
+          return;
+        }
+      }, 50);
+    });
+
+    socket.on('question_expired', ({ correctIdx }) => {
+      clearInterval(timerId);
+      document.getElementById('circularTimer').style.strokeDashoffset = circleCircumference;
+      document.getElementById('timerDigit').textContent = '0';
+      const card = document.getElementById(`optCard-${correctIdx}`);
+      if (card) {
+        card.classList.add('border-green-500', 'bg-green-950/40', 'text-green-400');
+        card.querySelector('.checkmark').classList.remove('hidden');
+      }
+    });
+
+    socket.on('display_podium', ({ winners }) => {
+      document.getElementById('arenaSection').classList.add('hidden');
+      document.getElementById('podiumSection').classList.remove('hidden');
+
+      if (winners[0]) document.getElementById('podium1').textContent = `${winners[0].name} (${winners[0].score}pt)`;
+      if (winners[1]) document.getElementById('podium2').textContent = `${winners[1].name} (${winners[1].score}pt)`;
+      if (winners[2]) document.getElementById('podium3').textContent = `${winners[2].name} (${winners[2].score}pt)`;
+
+      confetti({ particleCount: 90, spread: 80, origin: { x: 0.2, y: 0.7 } });
+      confetti({ particleCount: 90, spread: 80, origin: { x: 0.8, y: 0.7 } });
+    });
+
+    renderSavedList();
+  </script>
+</body>
+</html>
