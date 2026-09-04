@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nambans Live - Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans p-4 md:p-8">
+
+  <header class="max-w-4xl mx-auto flex items-center justify-between pb-4 mb-6 border-b border-slate-800">
+    <div class="flex items-center gap-4">
+      <div class="w-16 h-16 rounded-full border-2 border-green-500 bg-white p-1 shadow-lg flex items-center justify-center overflow-hidden">
+        <img src="/logo.png" alt="Logo" class="w-full h-full object-contain">
+      </div>
+      <div>
+        <h1 class="text-2xl font-black text-white tracking-wide">NAMBANS <span class="text-orange-500">LIVE</span></h1>
+        <p class="text-xs text-green-400 font-bold uppercase">Moidu Namban Initiative</p>
+      </div>
+    </div>
+    <div class="bg-slate-900 border border-slate-700 px-4 py-2 rounded-full text-sm font-mono flex items-center gap-2">
+      <span>Players:</span>
+      <span id="playerCounter" class="text-green-400 font-black text-base">0</span>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto">
+    <!-- BUILDER SECTION -->
+    <section id="builderSection" class="space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div class="flex justify-between items-center">
+          <h2 id="formTitle" class="text-lg font-bold text-white">പുതിയ ചോദ്യം ചേർക്കുക</h2>
+          <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-red-400 hover:underline">Cancel</button>
+        </div>
+        
+        <input type="text" id="qInput" placeholder="ചോദ്യം ഇവിടെ നൽകുക" 
+          class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500" />
+
+        <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700 space-y-2">
+          <label class="block text-xs font-bold text-slate-400 uppercase">ഫോട്ടോ (Optional):</label>
+          <input type="file" id="photoInput" accept="image/*" onchange="previewImage(event)" class="text-xs text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-green-600 file:text-white cursor-pointer" />
+          <div id="imagePreviewContainer" class="hidden mt-2 relative w-32 h-24 rounded-lg overflow-hidden border border-slate-600">
+            <img id="imgPreview" src="" class="w-full h-full object-cover">
+            <button onclick="removeImage()" class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">✕</button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <label class="text-xs font-bold text-slate-400 uppercase">സമയം (സെക്കൻഡ്):</label>
+          <select id="timeSelect" class="bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white">
+            <option value="10">10 Seconds</option>
+            <option value="15" selected>15 Seconds</option>
+            <option value="20">20 Seconds</option>
+            <option value="30">30 Seconds</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="0" checked class="w-5 h-5 accent-green-500">
+            <input type="text" id="opt0" placeholder="Option 1" class="w-full bg-transparent text-white outline-none">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="1" class="w-5 h-5 accent-green-500">
+            <input type="text" id="opt1" placeholder="Option 2" class="w-full bg-transparent text-white outline-none">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="2" class="w-5 h-5 accent-green-500">
+            <input type="text" id="opt2" placeholder="Option 3" class="w-full bg-transparent text-white outline-none">
+          </div>
+          <div class="flex items-center gap-2 bg-slate-800 p-3 rounded-xl border border-slate-700">
+            <input type="radio" name="correctOpt" value="3" class="w-5 h-5 accent-green-500">
+            <input type="text" id="opt3" placeholder="Option 4" class="w-full bg-transparent text-white outline-none">
+          </div>
+        </div>
+
+        <button id="saveBtn" onclick="saveQuestion()" class="w-full bg-slate-800 hover:bg-slate-700 font-bold py-3.5 rounded-xl transition border border-slate-700 cursor-pointer">
+          + Save Question
+        </button>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <h3 class="text-base font-bold text-white">സേവ് ചെയ്ത ചോദ്യങ്ങൾ (<span id="savedCount">0</span>)</h3>
+        <div id="questionsList" class="space-y-3 max-h-60 overflow-y-auto pr-2"></div>
+      </div>
+
+      <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+        <span id="deckSummary" class="text-sm font-semibold text-slate-400">0 ചോദ്യങ്ങൾ തയ്യാറാണ്</span>
+        <button id="startHostBtn" onclick="launchLiveHosting()" disabled 
+          class="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-green-600 to-green-500 disabled:opacity-30 font-black text-white hover:from-green-500 transition shadow-lg cursor-pointer">
+          GENERATE PIN & HOST
+        </button>
+      </div>
+    </section>
+
+    <!-- LIVE ARENA -->
+    <section id="arenaSection" class="hidden space-y-6">
+      <div class="bg-gradient-to-r from-orange-600 to-green-600 p-1 rounded-3xl shadow-2xl">
+        <div class="bg-slate-950 px-6 py-4 rounded-[22px] flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold text-slate-400 uppercase">Game PIN:</p>
+            <p id="displayPin" class="text-4xl md:text-5xl font-black text-white font-mono tracking-wider">------</p>
+          </div>
+          <div class="text-right">
+            <button id="nextOrStartBtn" onclick="handleQuestionFlow()" 
+              class="px-6 py-3 bg-green-600 hover:bg-green-500 text-sm font-black rounded-xl cursor-pointer shadow-lg active:scale-95 transition">
+              Start Quiz ➔
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTION DISPLAY SCREEN -->
+      <div id="qDisplayCard" class="hidden bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl flex flex-col items-center">
+        <div class="w-full flex justify-between items-center mb-4">
+          <span id="qTracker" class="text-base font-bold text-slate-300">Question 1/1</span>
+          <button onclick="revealNow()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-xl border border-slate-700">
+            Reveal Answer
+          </button>
+        </div>
+
+        <div class="relative w-32 h-32 flex items-center justify-center mb-6">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-800" fill="transparent" />
+            <circle id="circularTimer" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" 
+              stroke-dasharray="264" stroke-dashoffset="0" stroke-linecap="round" 
+              class="text-green-500 transition-all duration-300" fill="transparent" />
+          </svg>
+          <span id="timerDigit" class="absolute text-4xl font-black text-white font-mono">00</span>
+        </div>
+        
+        <h2 id="liveQText" class="text-2xl font-black text-center mb-6 w-full"></h2>
+        
+        <div id="liveImgContainer" class="hidden flex justify-center mb-6">
+          <img id="liveImg" src="" class="max-h-56 rounded-2xl border border-slate-700 object-contain shadow-lg">
+        </div>
+
+        <div id="liveOptionsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"></div>
+      </div>
+
+      <!-- QUESTION LEADERBOARD CARD -->
+      <div id="leaderboardCard" class="hidden bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
+        <h3 class="text-2xl font-black text-center text-orange-400 mb-6">📊 CURRENT LEADERBOARD</h3>
+        <div id="leaderboardList" class="space-y-3 max-w-xl mx-auto"></div>
+      </div>
+    </section>
+
+    <!-- PODIUM FINAL WINNERS SCREEN -->
+    <section id="podiumSection" class="hidden text-center py-6">
+      <div class="flex justify-center mb-3">
+        <div class="w-36 h-36 rounded-full border-4 border-yellow-500 bg-white p-2 shadow-2xl flex items-center justify-center overflow-hidden">
+          <img src="/logo.png" alt="Logo" class="w-full h-full object-contain">
+        </div>
+      </div>
+
+      <h2 class="text-4xl md:text-5xl font-black text-yellow-400 mb-1">🏆 WHO IS THE WINNER? 🏆</h2>
+      <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">Nambans Live Champions</p>
+
+      <div class="flex items-end justify-center gap-3 max-w-xl mx-auto h-80 mt-10">
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-3xl mb-1">🥈</span>
+          <p id="podium2" class="font-bold text-sm truncate max-w-[120px] text-slate-300"></p>
+          <div class="w-full bg-slate-700 h-44 rounded-t-2xl flex items-center justify-center text-4xl font-black text-slate-400 border-t-2 border-slate-500">2</div>
+        </div>
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-5xl mb-1">👑</span>
+          <p id="podium1" class="font-bold text-lg text-yellow-400 truncate max-w-[140px]"></p>
+          <div class="w-full bg-yellow-500 h-60 rounded-t-2xl flex items-center justify-center text-6xl font-black text-yellow-950 border-t-4 border-yellow-300 shadow-2xl">1</div>
+        </div>
+        <div class="flex-1 flex flex-col items-center">
+          <span class="text-3xl mb-1">🥉</span>
+          <p id="podium3" class="font-bold text-sm text-orange-400 truncate max-w-[120px]"></p>
+          <div class="w-full bg-amber-800 h-32 rounded-t-2xl flex items-center justify-center text-4xl font-black text-amber-950 border-t-2 border-amber-600">3</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const socket = io();
+    let quizDeck = JSON.parse(localStorage.getItem('nambans_quiz_deck') || '[]');
+    let currentIdx = -1;
+    let editingIndex = -1;
+    let currentBase64Image = null;
+    const circleCircumference = 264;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTickSound(isLastSeconds = false) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(isLastSeconds ? 1200 : 800, audioCtx.currentTime);
+
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.08);
+    }
+
+    function previewImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        currentBase64Image = e.target.result;
+        document.getElementById('imgPreview').src = currentBase64Image;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeImage() {
+      currentBase64Image = null;
+      document.getElementById('photoInput').value = '';
+      document.getElementById('imagePreviewContainer').classList.add('hidden');
+      document.getElementById('imgPreview').src = '';
+    }
+
+    function renderSavedList() {
+      const list = document.getElementById('questionsList');
+      list.innerHTML = '';
+      document.getElementById('savedCount').textContent = quizDeck.length;
+      document.getElementById('deckSummary').textContent = `${quizDeck.length} ചോദ്യങ്ങൾ തയ്യാറാണ്`;
+      document.getElementById('startHostBtn').disabled = quizDeck.length === 0;
+
+      quizDeck.forEach((q, idx) => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-3 bg-slate-800 rounded-xl border border-slate-700";
+        item.innerHTML = `
+          <div class="flex items-center gap-3 truncate">
+            <span class="text-xs font-bold text-slate-500">#${idx + 1}</span>
+            <p class="text-sm font-semibold truncate">${q.text}</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="editQuestion(${idx})" class="text-xs text-orange-400 font-bold bg-slate-700 px-2 py-1 rounded">Edit</button>
+            <button onclick="deleteQuestion(${idx})" class="text-xs text-red-400 font-bold bg-slate-700 px-2 py-1 rounded">Delete</button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      localStorage.setItem('nambans_quiz_deck', JSON.stringify(quizDeck));
+    }
+
+    function saveQuestion() {
+      const text = document.getElementById('qInput').value.trim();
+      const timeLimit = parseInt(document.getElementById('timeSelect').value, 10);
+      const correctChoice = parseInt(document.querySelector('input[name="correctOpt"]:checked').value, 10);
+      const options = [0,1,2,3].map(i => document.getElementById(`opt${i}`).value.trim());
+
+      if (!text || options.some(o => !o)) return alert("എല്ലാ വിവരങ്ങളും നൽകുക!");
+
+      const qObj = { text, timeLimit, correctChoice, options, image: currentBase64Image };
+      if (editingIndex > -1) {
+        quizDeck[editingIndex] = qObj;
+        editingIndex = -1;
+      } else {
+        quizDeck.push(qObj);
+      }
+      resetForm();
+      renderSavedList();
+    }
+
+    function editQuestion(idx) {
+      editingIndex = idx;
+      const q = quizDeck[idx];
+      document.getElementById('qInput').value = q.text;
+      document.getElementById('timeSelect').value = q.timeLimit;
+      document.querySelector(`input[name="correctOpt"][value="${q.correctChoice}"]`).checked = true;
+      for (let i = 0; i < 4; i++) document.getElementById(`opt${i}`).value = q.options[i];
+      if (q.image) {
+        currentBase64Image = q.image;
+        document.getElementById('imgPreview').src = q.image;
+        document.getElementById('imagePreviewContainer').classList.remove('hidden');
+      }
+      document.getElementById('saveBtn').textContent = "Update Question";
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+    }
+
+    function resetForm() {
+      editingIndex = -1;
+      document.getElementById('qInput').value = '';
+      for (let i = 0; i < 4; i++) document.getElementById(`opt${i}`).value = '';
+      removeImage();
+      document.getElementById('saveBtn').textContent = "+ Save Question";
+      document.getElementById('cancelEditBtn').classList.add('hidden');
+    }
+
+    function deleteQuestion(idx) {
+      quizDeck.splice(idx, 1);
+      renderSavedList();
+    }
+
+    function launchLiveHosting() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      currentIdx = -1;
+      socket.emit('admin_init_deck', { deck: quizDeck });
+      document.getElementById('builderSection').classList.add('hidden');
+      document.getElementById('arenaSection').classList.remove('hidden');
+      document.getElementById('nextOrStartBtn').textContent = "Start Quiz ➔";
+    }
+
+    function handleQuestionFlow() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      currentIdx++;
+      if (currentIdx >= quizDeck.length) {
+        socket.emit('admin_show_podium');
+        return;
+      }
+      document.getElementById('leaderboardCard').classList.add('hidden');
+      document.getElementById('qDisplayCard').classList.remove('hidden');
+      document.getElementById('nextOrStartBtn').classList.add('hidden');
+      socket.emit('admin_start_question', { questionIdx: currentIdx });
+    }
+
+    function revealNow() {
+      socket.emit('admin_reveal_early');
+    }
+
+    socket.on('player_count_update', count => {
+      document.getElementById('playerCounter').textContent = count;
+    });
+
+    socket.on('game_pin_generated', ({ pin }) => {
+      document.getElementById('displayPin').textContent = pin;
+    });
+
+    socket.on('new_question', data => {
+      document.getElementById('qTracker').textContent = `Question ${data.index + 1}/${data.total}`;
+      document.getElementById('liveQText').textContent = data.text;
+      
+      const imgContainer = document.getElementById('liveImgContainer');
+      if (data.image) {
+        document.getElementById('liveImg').src = data.image;
+        imgContainer.classList.remove('hidden');
+      } else {
+        imgContainer.classList.add('hidden');
+      }
+
+      const grid = document.getElementById('liveOptionsGrid');
+      grid.innerHTML = '';
+      data.options.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        div.id = `optCard-${idx}`;
+        div.className = "p-4 bg-slate-800 rounded-xl border border-slate-700 font-bold text-lg flex justify-between items-center";
+        div.innerHTML = `<span>${opt}</span><span class="hidden checkmark text-green-400 font-black text-xl">✓</span>`;
+        grid.appendChild(div);
+      });
+    });
+
+    socket.on('timer_tick', ({ secondsLeft, total }) => {
+      const circleBar = document.getElementById('circularTimer');
+      document.getElementById('timerDigit').textContent = secondsLeft;
+      const ratio = Math.max(0, secondsLeft / total);
+      circleBar.style.strokeDashoffset = circleCircumference * (1 - ratio);
+
+      if (secondsLeft > 0) {
+        playTickSound(secondsLeft <= 3);
+      }
+
+      if (ratio > 0.6) {
+        circleBar.setAttribute('class', 'text-green-500 transition-all duration-300');
+      } else if (ratio > 0.4) {
+        circleBar.setAttribute('class', 'text-yellow-400 transition-all duration-300');
+      } else if (ratio > 0.2) {
+        circleBar.setAttribute('class', 'text-orange-500 transition-all duration-300');
+      } else {
+        circleBar.setAttribute('class', 'text-red-500 transition-all duration-300');
+      }
+    });
+
+    socket.on('question_expired', ({ correctIdx, leaderboard }) => {
+      const card = document.getElementById(`optCard-${correctIdx}`);
+      if (card) {
+        card.classList.add('border-green-500', 'bg-green-950/40', 'text-green-400');
+        card.querySelector('.checkmark').classList.remove('hidden');
+      }
+
+      setTimeout(() => {
+        document.getElementById('qDisplayCard').classList.add('hidden');
+        document.getElementById('leaderboardCard').classList.remove('hidden');
+        
+        const list = document.getElementById('leaderboardList');
+        list.innerHTML = '';
+        leaderboard.forEach((player, i) => {
+          list.innerHTML += `
+            <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+              <span class="font-bold">#${i + 1} ${player.name}</span>
+              <span class="font-mono font-black text-orange-400">${player.score} pts</span>
+            </div>
+          `;
+        });
+
+        const nextBtn = document.getElementById('nextOrStartBtn');
+        nextBtn.textContent = (currentIdx + 1 >= quizDeck.length) ? "Show Winners 🏆" : "Next Question ➔";
+        nextBtn.classList.remove('hidden');
+      }, 2000);
+    });
+
+    socket.on('display_podium', ({ winners }) => {
+      document.getElementById('arenaSection').classList.add('hidden');
+      document.getElementById('podiumSection').classList.remove('hidden');
+
+      if (winners[0]) document.getElementById('podium1').textContent = `${winners[0].name} (${winners[0].score}pt)`;
+      if (winners[1]) document.getElementById('podium2').textContent = `${winners[1].name} (${winners[1].score}pt)`;
+      if (winners[2]) document.getElementById('podium3').textContent = `${winners[2].name} (${winners[2].score}pt)`;
+
+      confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+    });
+
+    renderSavedList();
+  </script>
+</body>
+</html>
