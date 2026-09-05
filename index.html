@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nambans Live</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-center items-center p-4 select-none">
+
+  <!-- 1. JOIN SECTION -->
+  <section id="joinBox" class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl space-y-6">
+    <div class="flex justify-center">
+      <div class="w-36 h-36 rounded-full border-4 border-green-500 shadow-2xl bg-white p-2 flex items-center justify-center overflow-hidden">
+        <img src="/logo.png" onerror="this.onerror=null;this.src='/logo.png.jpeg';" alt="Logo" class="w-full h-full object-contain" />
+      </div>
+    </div>
+
+    <div>
+      <h1 class="text-2xl font-black tracking-wide">NAMBANS <span class="text-orange-500">LIVE</span></h1>
+      <p class="text-xs text-green-400 font-bold uppercase">Moidu Namban Initiative</p>
+    </div>
+
+    <form onsubmit="handleJoin(event)" class="space-y-3">
+      <input type="text" id="gamePin" placeholder="Enter Game PIN" maxlength="6" required
+        class="w-full text-center text-xl tracking-widest font-black bg-slate-800 border-2 border-slate-700 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-orange-500" />
+      <input type="text" id="nickname" placeholder="Enter Your Nickname" maxlength="15" required
+        class="w-full text-center text-base font-bold bg-slate-800 border-2 border-slate-700 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-green-500" />
+      
+      <p id="joinErrMsg" class="text-xs text-red-400 hidden font-semibold"></p>
+      <button type="submit" class="w-full py-4 rounded-2xl font-black text-lg bg-green-600 active:scale-95 transition cursor-pointer">
+        JOIN GAME
+      </button>
+    </form>
+  </section>
+
+  <!-- 2. LOBBY SECTION -->
+  <section id="lobbyBox" class="hidden flex flex-col items-center justify-center space-y-4">
+    <div class="w-56 h-56 md:w-64 md:h-64 rounded-full border-4 border-green-500 shadow-2xl bg-white p-3 flex items-center justify-center animate-pulse overflow-hidden">
+      <img src="/logo.png" onerror="this.onerror=null;this.src='/logo.png.jpeg';" alt="Logo" class="w-full h-full object-contain" />
+    </div>
+    <p class="text-slate-400 font-bold animate-bounce text-sm">Waiting for the host to start...</p>
+  </section>
+
+  <!-- 3. QUESTION PLAY BOX -->
+  <section id="playBox" class="hidden w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl flex flex-col items-center space-y-4">
+    <div class="w-full flex justify-between items-center pb-2 border-b border-slate-800">
+      <span id="playerQIndex" class="text-xs font-bold text-slate-400">Question 1</span>
+      <span class="text-xs font-bold text-green-400">LIVE</span>
+    </div>
+
+    <!-- Circular Timer -->
+    <div class="relative w-24 h-24 flex items-center justify-center">
+      <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-800" fill="transparent" />
+        <circle id="playerTimerRing" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" 
+          stroke-dasharray="264" stroke-dashoffset="0" stroke-linecap="round" 
+          class="text-green-500 transition-all duration-300" fill="transparent" />
+      </svg>
+      <span id="playerTimerDigit" class="absolute text-2xl font-black text-white font-mono">00</span>
+    </div>
+
+    <div id="waitBanner" class="hidden w-full text-center py-4 px-3 rounded-2xl bg-slate-800 border border-yellow-500/50 text-yellow-300 font-black text-sm flex flex-col items-center gap-1 animate-pulse">
+      <span class="text-lg">⏳ Time Up!</span>
+      <span class="text-xs text-slate-300 font-medium">Please wait for next question...</span>
+    </div>
+
+    <div id="playerImgBox" class="hidden flex justify-center w-full">
+      <img id="playerQImg" src="" class="max-h-44 rounded-xl border border-slate-700 object-contain shadow">
+    </div>
+
+    <h2 id="playerQText" class="text-lg font-bold text-center text-slate-100 min-h-[40px] flex items-center justify-center w-full"></h2>
+    
+    <!-- 4 കളറുകളിലുള്ള ഓപ്ഷൻ ബട്ടണുകൾ -->
+    <div id="playerChoices" class="grid grid-cols-1 gap-3 w-full"></div>
+    <p id="submissionState" class="text-xs text-center text-slate-400"></p>
+  </section>
+
+  <!-- 4. PARTICIPANT WINNER SCREEN -->
+  <section id="participantPodium" class="hidden w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl space-y-6">
+    <div class="flex justify-center">
+      <div class="w-32 h-32 rounded-full border-4 border-yellow-500 bg-white p-2 shadow-2xl flex items-center justify-center overflow-hidden">
+        <img src="/logo.png" onerror="this.onerror=null;this.src='/logo.png.jpeg';" alt="Logo" class="w-full h-full object-contain" />
+      </div>
+    </div>
+    <div>
+      <h2 class="text-3xl font-black text-yellow-400 tracking-wide">🏆 WHO IS THE WINNER? 🏆</h2>
+      <p class="text-xs text-slate-400 uppercase font-bold mt-1">Final Result Announced</p>
+    </div>
+    <div id="playerWinnersList" class="space-y-3"></div>
+  </section>
+
+  <script>
+    const socket = io();
+    let hasSubmitted = false;
+    const circleCircumference = 264;
+
+    const buttonColors = [
+      { bg: "bg-red-600 hover:bg-red-500 border-red-400", label: "A" },
+      { bg: "bg-blue-600 hover:bg-blue-500 border-blue-400", label: "B" },
+      { bg: "bg-amber-600 hover:bg-amber-500 border-amber-400", label: "C" },
+      { bg: "bg-emerald-600 hover:bg-emerald-500 border-emerald-400", label: "D" }
+    ];
+
+    function handleJoin(e) {
+      e.preventDefault();
+      const pin = document.getElementById('gamePin').value.trim();
+      const name = document.getElementById('nickname').value.trim();
+      if (!pin || !name) return;
+      socket.emit('join_game', { pin, name });
+    }
+
+    socket.on('join_error', ({ message }) => {
+      const err = document.getElementById('joinErrMsg');
+      err.textContent = message;
+      err.classList.remove('hidden');
+    });
+
+    socket.on('joined_successfully', () => {
+      document.getElementById('joinBox').classList.add('hidden');
+      document.getElementById('lobbyBox').classList.remove('hidden');
+    });
+
+    socket.on('new_question', q => {
+      document.getElementById('lobbyBox').classList.add('hidden');
+      document.getElementById('playBox').classList.remove('hidden');
+      document.getElementById('waitBanner').classList.add('hidden');
+      document.getElementById('playerChoices').classList.remove('hidden');
+      document.getElementById('submissionState').textContent = 'Tap your answer!';
+      document.getElementById('submissionState').classList.remove('text-red-400');
+
+      document.getElementById('playerQIndex').textContent = `Question ${q.index + 1}/${q.total}`;
+      document.getElementById('playerQText').textContent = q.text;
+
+      const imgBox = document.getElementById('playerImgBox');
+      if (q.image) {
+        document.getElementById('playerQImg').src = q.image;
+        imgBox.classList.remove('hidden');
+      } else {
+        imgBox.classList.add('hidden');
+      }
+
+      hasSubmitted = false;
+      const choicesBox = document.getElementById('playerChoices');
+      choicesBox.innerHTML = '';
+
+      q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.id = `btn-${idx}`;
+        btn.className = `w-full p-4 rounded-2xl border-2 font-bold text-left text-white text-base active:scale-95 transition cursor-pointer shadow flex items-center ${buttonColors[idx].bg}`;
+        btn.innerHTML = `<span class="inline-block bg-black/20 px-2 py-0.5 rounded-lg mr-3 text-sm font-black">${buttonColors[idx].label}</span> <span>${opt}</span>`;
+        btn.onclick = () => submitChoice(idx);
+        choicesBox.appendChild(btn);
+      });
+    });
+
+    socket.on('timer_tick', ({ secondsLeft, total }) => {
+      document.getElementById('playerTimerDigit').textContent = secondsLeft;
+      const ratio = Math.max(0, secondsLeft / total);
+      const ring = document.getElementById('playerTimerRing');
+      ring.style.strokeDashoffset = circleCircumference * (1 - ratio);
+
+      if (ratio > 0.6) {
+        ring.setAttribute('class', 'text-green-500 transition-all duration-300');
+      } else if (ratio > 0.4) {
+        ring.setAttribute('class', 'text-yellow-400 transition-all duration-300');
+      } else if (ratio > 0.2) {
+        ring.setAttribute('class', 'text-orange-500 transition-all duration-300');
+      } else {
+        ring.setAttribute('class', 'text-red-500 transition-all duration-300');
+      }
+    });
+
+    function submitChoice(idx) {
+      if (hasSubmitted) return;
+      hasSubmitted = true;
+
+      socket.emit('submit_answer', { choiceIdx: idx });
+
+      const buttons = document.querySelectorAll('#playerChoices button');
+      buttons.forEach((b, i) => {
+        b.disabled = true;
+        if (i === idx) {
+          b.classList.add('ring-4', 'ring-white', 'scale-[1.02]');
+        } else {
+          b.classList.add('opacity-30');
+        }
+      });
+      document.getElementById('submissionState').textContent = 'Answer locked! 👍';
+    }
+
+    socket.on('question_expired', () => {
+      hasSubmitted = true;
+      document.getElementById('waitBanner').classList.remove('hidden');
+      const buttons = document.querySelectorAll('#playerChoices button');
+      buttons.forEach(b => {
+        b.disabled = true;
+        b.classList.add('opacity-40');
+      });
+    });
+
+    socket.on('display_podium', ({ winners }) => {
+      document.getElementById('playBox').classList.add('hidden');
+      document.getElementById('lobbyBox').classList.add('hidden');
+      document.getElementById('participantPodium').classList.remove('hidden');
+
+      const list = document.getElementById('playerWinnersList');
+      list.innerHTML = '';
+      const medals = ['🥇', '🥈', '🥉'];
+      
+      winners.forEach((p, i) => {
+        list.innerHTML += `
+          <div class="flex items-center justify-between p-4 bg-slate-800 rounded-2xl border ${i === 0 ? 'border-yellow-500 bg-yellow-500/10' : 'border-slate-700'}">
+            <span class="text-xl">${medals[i]} <b class="${i === 0 ? 'text-yellow-400' : 'text-white'} ml-2">${p.name}</b></span>
+            <span class="font-mono font-black text-orange-400">${p.score} pts</span>
+          </div>
+        `;
+      });
+
+      confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+    });
+  </script>
+</body>
+</html>
